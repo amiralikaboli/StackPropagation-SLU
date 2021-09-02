@@ -71,14 +71,14 @@ if __name__ == "__main__":
     # Instantiate a dataset object.
     dataset = DatasetManager(args)
     dataset.quick_build()
-    dataset.show_summary()
+    # dataset.show_summary()
 
     # Instantiate a network model object.
     model = ModelManager(
         args, len(dataset.word_alphabet),
         len(dataset.slot_alphabet),
         len(dataset.intent_alphabet))
-    model.show_summary()
+    # model.show_summary()
 
     # To train and evaluate the models.
     process = Processor(dataset, model, args.batch_size)
