@@ -37,7 +37,7 @@ class Processor(object):
             self.__model = self.__model.cuda()
 
             time_con = time.time() - time_start
-            # print("The model has been loaded into GPU and cost {:.6f} seconds.\n".format(time_con))
+            print("The model has been loaded into GPU and cost {:.6f} seconds.\n".format(time_con))
 
         self.__criterion = nn.NLLLoss()
         self.__optimizer = optim.Adam(
@@ -57,8 +57,7 @@ class Processor(object):
             time_start = time.time()
             self.__model.train()
 
-            # for text_batch, slot_batch, intent_batch in tqdm(dataloader, ncols=50):
-            for text_batch, slot_batch, intent_batch in dataloader:
+            for text_batch, slot_batch, intent_batch in tqdm(dataloader, ncols=50):
                 padded_text, [sorted_slot, sorted_intent], seq_lens, _ = self.__dataset.add_padding(
                     text_batch, [(slot_batch, False), (intent_batch, False)]
                 )
@@ -107,8 +106,8 @@ class Processor(object):
                     total_intent_loss += intent_loss.cpu().data.numpy()[0]
 
             time_con = time.time() - time_start
-            # print('[Epoch {:2d}]: The total slot loss on train data is {:2.6f}, intent data is {:2.6f}, cost ' \
-            #       'about {:2.6} seconds.'.format(epoch, total_slot_loss, total_intent_loss, time_con))
+            print('[Epoch {:2d}]: The total slot loss on train data is {:2.6f}, intent data is {:2.6f}, cost ' \
+                  'about {:2.6} seconds.'.format(epoch, total_slot_loss, total_intent_loss, time_con))
 
             change, time_start = False, time.time()
             dev_f1_score, dev_acc, dev_sent_acc = self.estimate(if_dev=True, test_batch=self.__batch_size)
@@ -123,8 +122,8 @@ class Processor(object):
                 if dev_sent_acc > best_dev_sent:
                     best_dev_sent = dev_sent_acc
 
-                # print('Test result: slot f1 score: {:.6f}, intent acc score: {:.6f}, semantic '
-                #       'accuracy score: {:.6f}.'.format(test_f1, test_acc, test_sent_acc))
+                print('Test result: slot f1 score: {:.6f}, intent acc score: {:.6f}, semantic '
+                      'accuracy score: {:.6f}.'.format(test_f1, test_acc, test_sent_acc))
                 print(f"epoch {epoch}: {round(test_acc, 4)}")
 
                 model_save_dir = os.path.join(self.__dataset.save_dir, "model")
@@ -135,9 +134,9 @@ class Processor(object):
                 torch.save(self.__dataset, os.path.join(model_save_dir, 'dataset.pkl'))
 
                 time_con = time.time() - time_start
-                # print('[Epoch {:2d}]: In validation process, the slot f1 score is {:2.6f}, ' \
-                #       'the intent acc is {:2.6f}, the semantic acc is {:.2f}, cost about ' \
-                #       '{:2.6f} seconds.\n'.format(epoch, dev_f1_score, dev_acc, dev_sent_acc, time_con))
+                print('[Epoch {:2d}]: In validation process, the slot f1 score is {:2.6f}, ' \
+                      'the intent acc is {:2.6f}, the semantic acc is {:.2f}, cost about ' \
+                      '{:2.6f} seconds.\n'.format(epoch, dev_f1_score, dev_acc, dev_sent_acc, time_con))
 
     def estimate(self, if_dev, test_batch=100):
         """
@@ -155,8 +154,8 @@ class Processor(object):
 
         slot_f1_socre = miulab.computeF1Score(pred_slot, real_slot)[0]
         intent_acc = Evaluator.accuracy(pred_intent, real_intent)
-        # if not if_dev:
-        #     print(classification_report(real_intent, pred_intent, digits=4))
+        if not if_dev:
+            print(classification_report(real_intent, pred_intent, digits=4))
         sent_acc = Evaluator.semantic_acc(pred_slot, real_slot, pred_intent, real_intent)
 
         return slot_f1_socre, intent_acc, sent_acc
@@ -232,8 +231,7 @@ class Processor(object):
         pred_slot, real_slot = [], []
         pred_intent, real_intent = [], []
 
-        # for text_batch, slot_batch, intent_batch in tqdm(dataloader, ncols=50):
-        for text_batch, slot_batch, intent_batch in dataloader:
+        for text_batch, slot_batch, intent_batch in tqdm(dataloader, ncols=50):
             padded_text, [sorted_slot, sorted_intent], seq_lens, sorted_index = dataset.add_padding(
                 text_batch, [(slot_batch, False), (intent_batch, False)], digital=False
             )
