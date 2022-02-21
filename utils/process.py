@@ -7,18 +7,19 @@
 @LastModify	:           2019/05/07
 """
 
+import os
+import random
+import time
+from collections import Counter
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.autograd import Variable
-
-import os
-import time
-import random
-import numpy as np
-from tqdm import tqdm
-from collections import Counter
 from sklearn.metrics import classification_report
+from torch.autograd import Variable
+from tqdm import tqdm
+from transformers import BertTokenizer
 
 # Utils functions copied from Slot-gated model, origin url:
 # 	https://github.com/MiuLab/SlotGated-SLU/blob/master/utils.py
@@ -31,6 +32,8 @@ class Processor(object):
         self.__dataset = dataset
         self.__model = model
         self.__batch_size = batch_size
+
+        self.__tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
         if torch.cuda.is_available():
             time_start = time.time()
@@ -50,7 +53,7 @@ class Processor(object):
         best_dev_intent = 0.0
         best_dev_sent = 0.0
 
-        dataloader = self.__dataset.batch_delivery('train')
+        dataloader = self.__dataset.batch_delivery('train', is_digital_text=False)
         for epoch in range(0, self.__dataset.num_epoch):
             total_slot_loss, total_intent_loss = 0.0, 0.0
 
@@ -58,11 +61,11 @@ class Processor(object):
             self.__model.train()
 
             for text_batch, slot_batch, intent_batch in tqdm(dataloader, ncols=50):
-                padded_text, [sorted_slot, sorted_intent], seq_lens, _ = self.__dataset.add_padding(
-                    text_batch, [(slot_batch, False), (intent_batch, False)]
-                )
-                sorted_intent = [item * num for item, num in zip(sorted_intent, seq_lens)]
-                sorted_intent = list(Evaluator.expand_list(sorted_intent))
+                text_batch = [" ".join(text) for text in text_batch]
+                padded_text = self.__tokenizer(text_batch, return_tensors='pt', truncation=True, padding=True,
+                                               add_special_tokens=True)
+                sorted_slot = slot_batch
+                sorted_intent = intent_batch
 
                 text_var = Variable(torch.LongTensor(padded_text))
                 slot_var = Variable(torch.LongTensor(list(Evaluator.expand_list(sorted_slot))))
@@ -246,7 +249,7 @@ class Processor(object):
                 for i in range(len(sorted_index)):
                     tmp_intent[sorted_index[i]] = sorted_intent[i]
                 sorted_intent = tmp_intent
-            
+
             real_slot.extend(sorted_slot)
             real_intent.extend(list(Evaluator.expand_list(sorted_intent)))
 
@@ -258,22 +261,22 @@ class Processor(object):
 
             slot_idx, intent_idx = model(var_text, seq_lens, n_predicts=1)
             nested_slot = Evaluator.nested_list([list(Evaluator.expand_list(slot_idx))], seq_lens)[0]
-            
+
             if mode == 'test':
                 tmp_r_slot = [[] for _ in range(len(sorted_index))]
                 for i in range(len(sorted_index)):
                     tmp_r_slot[sorted_index[i]] = nested_slot[i]
                 nested_slot = tmp_r_slot
-            
+
             pred_slot.extend(dataset.slot_alphabet.get_instance(nested_slot))
             nested_intent = Evaluator.nested_list([list(Evaluator.expand_list(intent_idx))], seq_lens)[0]
-            
+
             if mode == 'test':
                 tmp_intent = [[] for _ in range(len(sorted_index))]
                 for i in range(len(sorted_index)):
                     tmp_intent[sorted_index[i]] = nested_intent[i]
                 nested_intent = tmp_intent
-            
+
             pred_intent.extend(dataset.intent_alphabet.get_instance(nested_intent))
 
         exp_pred_intent = Evaluator.max_freq_predict(pred_intent)
