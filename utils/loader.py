@@ -345,18 +345,15 @@ class DatasetManager(object):
 
         return texts, slots, intents
 
-    def batch_delivery(self, data_name, batch_size=None, is_digital=True, shuffle=True):
+    def batch_delivery(self, data_name, batch_size=None, is_digital_text=True, is_digital_slot=True,
+                       is_digital_intent=True, shuffle=True):
         if batch_size is None:
             batch_size = self.batch_size
 
-        if is_digital:
-            text = self.__digit_word_data[data_name]
-            slot = self.__digit_slot_data[data_name]
-            intent = self.__digit_intent_data[data_name]
-        else:
-            text = self.__text_word_data[data_name]
-            slot = self.__text_slot_data[data_name]
-            intent = self.__text_intent_data[data_name]
+        text = self.__digit_word_data[data_name] if is_digital_text else self.__text_word_data[data_name]
+        slot = self.__digit_slot_data[data_name] if is_digital_slot else self.__text_slot_data[data_name]
+        intent = self.__digit_intent_data[data_name] if is_digital_intent else self.__text_intent_data[data_name]
+
         dataset = TorchDataset(text, slot, intent)
 
         return DataLoader(dataset, batch_size=batch_size, shuffle=shuffle, collate_fn=self.__collate_fn)
